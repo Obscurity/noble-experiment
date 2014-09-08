@@ -281,6 +281,7 @@ void  load_helps              ( void );
 bool  check_name              ( const char *name );
 void  clear_mobile            ( D_M *dMob );
 void  free_mobile             ( D_M *dMob );
+void  emote                   ( D_M *dMob, char *txt, int range );
 void  communicate             ( D_M *dMob, char *txt, int range );
 void  load_muddata            ( bool fCopyOver );
 char *get_time                ( void );
