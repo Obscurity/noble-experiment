@@ -1,76 +1,74 @@
-/* event.h
- *
- * This file contains the event data struture, global variables
- * and specially defined values like MAX_EVENT_HASH.
- */
+#ifndef __EVENT_H
+#define __EVENT_H
+//*****************************************************************************
+//
+// event.h
+//
+// this is the interface for the event handler. Events are temporally
+// delayed functions. Events and actions (see action.h) may seem similar. They
+// do, however, share some distinct differences. Whereas actions can only
+// be attached to characters, and only one action can be attached to a 
+// character at a time, events can be attached to anything, and anything can
+// have any number of events attached to it at a time. And, indeed, they do
+// not even need to be attached to anything! Some examples of what might
+// constitute an event are things like a quest that is scheduled to start in
+// 5 minutes, a disease that will kill someone in 5 minutes unless they find
+// a cure for it, or perhaps a scheduled game reboot.
+//
+//*****************************************************************************
 
-/* the size of the event queue */
-#define MAX_EVENT_HASH        128
 
-/* the different types of owners */
-#define EVENT_UNOWNED           0
-#define EVENT_OWNER_NONE        1
-#define EVENT_OWNER_DSOCKET     2
-#define EVENT_OWNER_DMOB        3
-#define EVENT_OWNER_GAME        4
 
-/* the NULL event type */
-#define EVENT_NONE              0
+//
+// must called before events can be used
+//
+void init_events();
 
-/* Mobile events are given a type value here.
- * Each value should be unique and explicit,
- * besides that, there are no restrictions.
- */
-#define EVENT_MOBILE_SAVE       1
 
-/* Socket events are given a type value here.
- * Each value should be unique and explicit,
- * besides that, there are no restrictions.
- */
-#define EVENT_SOCKET_IDLE       1
+//
+// Pulse all of the events 
+//
+void pulse_events(int time);
 
-/* Game events are given a type value here.
- * Each value should be unique and explicit,
- * besides that, there are no restrictions
- */
-#define EVENT_GAME_TICK         1
 
-/* the event prototype */
-typedef bool EVENT_FUN ( EVENT_DATA *event );
+//
+// Stop all events involving "thing". "thing" can be anything that
+// might be involved in an event (either as the owner of the event
+// or some part of the event's data).
+//
+void interrupt_events_involving(void *thing);
 
-/* the event structure */
-struct event_data
-{
-  EVENT_FUN        * fun;              /* the function being called           */
-  char             * argument;         /* the text argument given (if any)    */
-  sh_int             passes;           /* how long before this event executes */
-  sh_int             type;             /* event type EVENT_XXX_YYY            */
-  sh_int             ownertype;        /* type of owner (unlinking req)       */
-  sh_int             bucket;           /* which bucket is this event in       */
 
-  union 
-  {                                    /* this is the owner of the event, we  */
-    D_MOBILE       * dMob;             /* use a union to make sure any of the */
-    D_SOCKET       * dSock;            /* types can be used for an event.     */
-  } owner;
-};
+//
+// Put an event into the event handler. When the delay reaches 0, 
+// on_complete is called.
+//
+// on_complete must be a function that takes the owner as its first
+// argument, the data as its second, and the argument as its third.
+//
+// check_involvement must be a function that takes the thing to check
+// the involvement of as the first argument, and the data to check in
+// as its second argument. It must return TRUE if the data contains
+// a pointer to the thing, and FALSE otherwise.
+//
+void start_event(void *owner, 
+		 int   delay,
+ 		 void *on_complete,
+		 void *check_involvement,
+		 void *data,
+		 const char *arg);
 
-/* functions which can be accessed outside event-handler.c */
-EVENT_DATA *alloc_event          ( void );
-EVENT_DATA *event_isset_socket   ( D_SOCKET *dSock, int type );
-EVENT_DATA *event_isset_mobile   ( D_MOBILE *dMob, int type );
-void dequeue_event               ( EVENT_DATA *event );
-void init_event_queue            ( int section );
-void init_events_player          ( D_MOBILE *dMob );
-void init_events_socket          ( D_SOCKET *dSock );
-void heartbeat                   ( void );
-void add_event_mobile            ( EVENT_DATA *event, D_MOBILE *dMob, int delay );
-void add_event_socket            ( EVENT_DATA *event, D_SOCKET *dSock, int delay );
-void add_event_game              ( EVENT_DATA *event, int delay );
-void strip_event_socket          ( D_SOCKET *dSock, int type );
-void strip_event_mobile          ( D_MOBILE *dMob, int type );
 
-/* all events should be defined here */
-bool event_mobile_save           ( EVENT_DATA *event );
-bool event_socket_idle           ( EVENT_DATA *event );
-bool event_game_tick             ( EVENT_DATA *event );
+//
+// same deal as start_event, but will automatically re-queue the event
+// after it has fired. Useful for events that are currently running (e.g.
+// mudtime updating, ticks, zone reset timers).
+//
+void start_update(void *owner,
+		  int   delay,
+		  void *on_complete,
+		  void *check_involvement,
+		  void *data,
+		  const char *arg);
+
+#endif // __EVENT_H

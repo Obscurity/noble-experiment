@@ -1,33 +1,43 @@
-SocketMud version 2.4
+NakedMud is a project I started up to keep myself entertained, and fool around
+with a couple ideas I could not work with on the MUD I run. The basic idea
+behind NakedMud is to provide users with a solid engine for running a MUD, but
+without the content that goes along with it.
+
+I really know little about socket handling, and every time I've looked at the
+topic, I cringe in horror. That is the reason NakedMud was built on top of
+SocketMud(tm); SocketMud(tm) was essentially a glorified chat client when I got
+it, which suited my purposes perfectly, since it had all of the socket work
+done, leaving all of the fun stuff for me to fool around with. Many thanks go
+out to Brian Graversen for writing and releasing SocketMud(tm) to the public.
+
+The origional SocketMud(tm) README has been appended below.
+
+For instructions on getting the MUD up and running, see startup.txt
+
+Geoff Hollis
+hollisgf@email.uc.edu
+http://www.uc.edu/~hollisgf/
+
+--------------------------------------------------------------------------------
+
+SocketMud version 1.9
 
 Little mud project, which has a command interpreter and supports
 ANSI colors... has a nifty little help file system, and a few
 commands (say, quit, who, etc). Also supports MCCP version 1 and 2.
 
+I have used a few snippets of Erwin Andreasen's, so if you use this
+codebase for something, remember to keep the credits to him, he
+deserves it.
+
 Simply type 'make' in the ../src/ directory, and start the mud
 by typing './SocketMud &'. You can now connect by telnetting
 to port 9009 on localhost (or whatever machine it runs on).
 
-Thanks goes to the community of coders that have helped with bugfixes, 
-typos, ideas and improvements on the codebase.
-
-ANSI C
-======
-For those wanting the code to compile with the -ansi flag (for ANSI C
-compliance), I have made sure that almost the entire codebase works
-out of the box - there are only three functions giving problems. These
-are the isascii() macro, the gethostbyaddr_r() function and the
-vsnprintf() function call. The first macro is easy enough to fix, simply
-add something like this to mud.h
-
-#define isascii(c)              (((c) & ~0x7f) == 0)
-
-The call to gethostbyaddr_r() will probably be the worst part. The only
-real solution I see, is to remove the threaded calls for DNS lookups,
-and simple live with using gethostbyaddr() calls.
-
-The vsnprintf() call can simply be replaced by vsprintf(), though you
-will then risk writing beyond the end of the buffer.
+All parts of the SocketMud code written by me, that is contained
+in this distribution, is considered public domain, and may be used
+as you see fit - but do remember to give credit for Erwin's codebits,
+even though they are considered PD as well.
 
 Code and all that by
 

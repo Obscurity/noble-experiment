@@ -10,6 +10,29 @@
 
 /* include main header file */
 #include "mud.h"
+#include "utils.h"
+
+/*
+ * Compares two strings, and returns TRUE
+ * if they match 100% (not case sensetive).
+ */
+bool compares(const char *aStr, const char *bStr)
+{
+  int i = 0;
+
+  /* NULL strings never compares */
+  if (aStr == NULL || bStr == NULL) return FALSE;
+
+  while (aStr[i] != '\0' && bStr[i] != '\0' && toupper(aStr[i]) == toupper(bStr[i]))
+    i++;
+
+  /* if we terminated for any reason except the end of both strings return FALSE */
+  if (aStr[i] != '\0' || bStr[i] != '\0')
+    return FALSE;
+
+  /* success */
+  return TRUE;
+}
 
 /*
  * Checks if aStr is a prefix of bStr.
@@ -33,8 +56,9 @@ bool is_prefix(const char *aStr, const char *bStr)
   return TRUE;
 }
 
-char *one_arg(char *fStr, char *bStr)
-{
+
+// same as one_arg, but can take constants
+const char *one_arg_safe(const char *fStr, char *bStr) {
   /* skip leading spaces */
   while (isspace(*fStr))
     fStr++; 
@@ -43,7 +67,7 @@ char *one_arg(char *fStr, char *bStr)
   while (*fStr != '\0')
   {
     /* have we reached the end of the first word ? */
-    if (*fStr == ' ')
+    if (isspace(*fStr))
     {
       fStr++;
       break;
@@ -64,6 +88,76 @@ char *one_arg(char *fStr, char *bStr)
   return fStr;
 }
 
+
+char *one_arg(char *fStr, char *bStr)
+{
+  /* skip leading spaces */
+  while (isspace(*fStr))
+    fStr++; 
+
+  char arg_end = ' ';
+
+  // are we using quotation marks or commas to specify multiple words?
+  if(*fStr == '"' || *fStr == '\'') {
+    arg_end = *fStr;
+    fStr++;
+  }
+
+  /* copy the beginning of the string */
+  while (*fStr != '\0')
+  {
+    /* have we reached the end of the first word ? */
+    if (*fStr == arg_end)
+    {
+      fStr++;
+      break;
+    }
+
+    /* copy one char */
+    *bStr++ = *fStr++;
+  }
+
+  /* terminate string */
+  *bStr = '\0';
+
+  /* skip past any leftover spaces */
+  while (isspace(*fStr))
+    fStr++;
+
+  /* return the leftovers */
+  return fStr;
+}
+
+char *two_args(char *from, char *arg1, char *arg2) {
+  return one_arg(one_arg(from, arg1), arg2);
+}
+
+char *three_args(char *from, char *arg1, char *arg2, char *arg3) {
+  return one_arg(one_arg(one_arg(from, arg1), arg2), arg3);
+}
+
+//
+// pull out the argument of the specified number
+//
+void arg_num(const char *from, char *to, int num) {
+  int count = 1;
+
+  while(count < num && *from != '\0') {
+    if(isspace(*from))
+      count++;
+    from++;
+  }
+
+  int i;
+  // copy up to the first space
+  for(i = 0; !isspace(from[i]) && from[i] != '\0'; i++)
+    to[i] = from[i];
+
+  // now cap our string
+  to[i] = '\0';
+}
+
+
 char *capitalize(char *txt)
 {
   static char buf[MAX_BUFFER];
@@ -83,132 +177,29 @@ char *capitalize(char *txt)
   return buf;
 }
 
-/*  
- * Create a new buffer.
- */
-BUFFER *__buffer_new(int size)
+char *strfind(char *txt, char *sub)
 {
-  BUFFER *buffer;
-    
-  buffer = malloc(sizeof(BUFFER));
-  buffer->size = size;
-  buffer->data = malloc(size);
-  buffer->len = 0;
-  return buffer;
-}
+  int i, j;
 
-/*
- * Add a string to a buffer. Expand if necessary
- */
-void __buffer_strcat(BUFFER *buffer, const char *text)  
-{
-  int new_size;
-  int text_len;
-  char *new_data;
- 
-  /* Adding NULL string ? */
-  if (!text)
-    return;
+  int len = strlen(txt) - strlen(sub);
 
-  text_len = strlen(text);
-    
-  /* Adding empty string ? */ 
-  if (text_len == 0)
-    return;
+  for(i = 0; i <= len; i++) {
+    if(txt[i] == sub[0]) {
+      bool found = TRUE;
 
-  /* Will the combined len of the added text and the current text exceed our buffer? */
-  if ((text_len + buffer->len + 1) > buffer->size)
-  { 
-    new_size = buffer->size + text_len + 1;
-   
-    /* Allocate the new buffer */
-    new_data = malloc(new_size);
-  
-    /* Copy the current buffer to the new buffer */
-    memcpy(new_data, buffer->data, buffer->len);
-    free(buffer->data);
-    buffer->data = new_data;  
-    buffer->size = new_size;
+      for(j = 1; sub[j] != '\0'; j++) {
+	if(sub[j] != txt[i+j]) {
+	  found = FALSE;
+	  break;
+	}
+      }
+
+      if(found)
+	return &txt[i];
+
+      i += j;
+    }
   }
-  memcpy(buffer->data + buffer->len, text, text_len);
-  buffer->len += text_len;
-  buffer->data[buffer->len] = '\0';
-}
 
-/* free a buffer */
-void buffer_free(BUFFER *buffer)
-{
-  /* Free data */
-  free(buffer->data);
- 
-  /* Free buffer */
-  free(buffer);
-}
-
-/* Clear a buffer's contents, but do not deallocate anything */
-void buffer_clear(BUFFER *buffer)
-{
-  buffer->len = 0;
-  buffer->data[0] = '\0';
-}
-
-/* print stuff, append to buffer. safe. */
-int bprintf(BUFFER *buffer, char *fmt, ...)
-{  
-  char buf[MAX_BUFFER];
-  va_list va;
-  int res;
-    
-  va_start(va, fmt);
-  res = vsnprintf(buf, MAX_BUFFER, fmt, va);
-  va_end(va);
-    
-  if (res >= MAX_BUFFER - 1)  
-  {
-    buf[0] = '\0';
-    bug("Overflow when printing string %s", fmt);
-  }
-  else
-    buffer_strcat(buffer, buf);
-   
-  return res;
-}
-
-char *strdup(const char *s)
-{
-  char *pstr;
-  int len;
-
-  len = strlen(s) + 1;
-  pstr = (char *) calloc(1, len);
-  strcpy(pstr, s);
-
-  return pstr;
-}
-
-int strcasecmp(const char *s1, const char *s2)
-{
-  int i = 0;
-
-  while (s1[i] != '\0' && s2[i] != '\0' && toupper(s1[i]) == toupper(s2[i]))
-    i++;
-
-  /* if they matched, return 0 */
-  if (s1[i] == '\0' && s2[i] == '\0')
-    return 0;
-
-  /* is s1 a prefix of s2? */
-  if (s1[i] == '\0')
-    return -110;
-
-  /* is s2 a prefix of s1? */
-  if (s2[i] == '\0')
-    return 110;
-
-  /* is s1 less than s2? */
-  if (toupper(s1[i]) < toupper(s2[i]))
-    return -1;
-
-  /* s2 is less than s1 */
-  return 1;
+  return NULL;
 }
